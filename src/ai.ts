@@ -1,7 +1,7 @@
 /** 站內 AI：讀價目表、目前購物車、預算 → 回「整個新購物車」的提案。AI 永遠只能提案。 */
 import { CATALOG, SKUS, cleanCart, totalCents, type Cart, type Sku } from "./law";
 
-export type AiResult = { cart: Cart; note: string; budgetCents: number | null; source: "gemini" | "local" };
+export type AiResult = { cart: Cart; note: string; budgetCents: number | null; source: "gemini" | "local"; diagnostic?: string };
 
 const ZH_NUM: Record<string, number> = { 一: 1, 兩: 2, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
 const ALIASES: Record<Sku, RegExp> = {
@@ -75,9 +75,20 @@ export async function aiPropose(
         generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0.2 },
       }),
     });
-    if (!r.ok) throw new Error(`gemini ${r.status}`);
+    if (!r.ok) {
+      // Expose only a coarse HTTP/status code: never disclose Google's raw error or credentials.
+      const fail = (await r.json().catch(() => null)) as { error?: { status?: unknown } } | null;
+      const kind = fail?.error?.status;
+      const safeKind = typeof kind === "string" && /^[A-Z_]{3,40}$/.test(kind) ? `_${kind}` : "";
+      throw new Error(`HTTP_${r.status}${safeKind}`);
+    }
     const j = (await r.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-    const raw = JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}") as { items?: { sku: string; qty: number }[]; note?: string; budget_usd?: number | null };
+    const payload = j.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!payload) throw new Error("EMPTY_RESULT");
+    let raw: { items?: { sku: string; qty: number }[]; note?: string; budget_usd?: number | null };
+    try { raw = JSON.parse(payload); }
+    catch { throw new Error("INVALID_JSON"); }
+    if (!Array.isArray(raw.items)) throw new Error("INVALID_SCHEMA");
     const next: Record<string, number> = {};
     for (const it of raw.items ?? []) next[it.sku] = it.qty;
     return {
@@ -86,8 +97,12 @@ export async function aiPropose(
       budgetCents: typeof raw.budget_usd === "number" && raw.budget_usd > 0 ? Math.round(raw.budget_usd * 100) : budgetCents,
       source: "gemini",
     };
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    const diagnostic = /^(HTTP_\d{3}(?:_[A-Z_]{3,40})?|EMPTY_RESULT|INVALID_JSON|INVALID_SCHEMA)$/.test(msg) ? msg : "NETWORK_ERROR";
+    // No shopper text, model output, credentials or raw upstream response in logs.
+    console.warn("PAYBOARD_GEMINI_FALLBACK", { model, diagnostic });
     const fb = localParse(text, cart);
-    return { ...fb, note: fb.note + "（AI 暫時沒回應，改用本機規則）" };
+    return { ...fb, diagnostic, note: fb.note + "（AI 暫時沒回應，改用本機規則）" };
   }
 }
