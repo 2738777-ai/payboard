@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101d1d">
+  <meta name="description" content="PayBoard — propose with AI, approve as a human, checkout with PayPal Sandbox.">
+  <title>PayBoard · Human-approved AI commerce</title>
+  <link rel="stylesheet" href="style.css">
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a href="/" class="brand" aria-label="PayBoard home">
+        <span class="brand-icon" aria-hidden="true">◈</span>
+        <span><strong>PayBoard</strong><small>Human × AI commerce</small></span>
+      </a>
+      <div class="top-actions">
+        <span id="service-status" class="service-status" role="status"><span class="live-dot"></span><span id="service-label">連線中</span></span>
+        <button type="button" class="icon-btn language" id="language" aria-label="Switch language">EN</button>
+      </div>
+    </header>
+
+    <div id="offline-warning" class="warning" hidden role="status"></div>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="eyebrow"><span class="sparkle">✳</span> <span id="eyebrow">共享工作台 · 真實測試付款</span></div>
+      <h1 id="hero-title">你說需求，AI 提案。<br><em>付款由你決定。</em></h1>
+      <p id="hero-caption">AI 只會建議購物車。你批准購物車後，還要親自在 PayPal 確認付款。</p>
+      <div class="trust-row"><span><span class="tiny-dot"></span><span id="sandbox-text">PayPal Sandbox · 非真金錢</span></span><span id="ai-status">AI：檢查中</span><span id="board-rev">版本 —</span></div>
+    </section>
+
+    <nav class="steps" aria-label="Flow steps">
+      <div class="step is-current" id="step-shop"><b>1</b><span data-i18n="stepShop">挑選</span></div>
+      <span class="step-line" aria-hidden="true"></span>
+      <div class="step" id="step-review"><b>2</b><span data-i18n="stepReview">審核</span></div>
+      <span class="step-line" aria-hidden="true"></span>
+      <div class="step" id="step-pay"><b>3</b><span data-i18n="stepPay">付款</span></div>
+    </nav>
+
+    <main class="columns">
+      <div class="main-pane">
+        <section class="section-card" aria-labelledby="products-title">
+          <div class="section-title"><div><p class="overline" data-i18n="shopOverline">01 / SHOP</p><h2 id="products-title" data-i18n="products">商品</h2></div><span class="helper" id="catalog-count"></span></div>
+          <div class="product-grid" id="products" aria-live="polite"><div class="loading-card">Loading products…</div></div>
+          <p class="helper product-hint" data-i18n="directEditHint">＋／－ 是你直接修改購物車，不需要呼叫 AI。</p>
+        </section>
+
+        <section class="section-card proposal-card" aria-labelledby="proposal-title" id="proposal-section" hidden>
+          <div class="section-title"><div><p class="overline" data-i18n="proposalOverline">02 / AI SUGGESTION</p><h2 id="proposal-title" data-i18n="proposalTitle">AI 提案</h2></div><span class="source-pill" id="proposal-source">來源待確認</span></div>
+          <p id="proposal-note" class="proposal-note"></p>
+          <div class="compare" id="proposal-comparison"></div>
+          <div class="button-pair"><button type="button" class="btn btn-outline" id="reject-proposal" data-action="reject"><span data-i18n="reject">拒絕</span></button><button type="button" class="btn btn-primary" id="approve-proposal" data-action="approve"><span data-i18n="approve">批准提案</span></button></div>
+          <p class="helper" data-i18n="proposalSafety">提案不會直接改購物車或觸發付款。</p>
+        </section>
+
+        <details class="history" id="history">
+          <summary><span class="history-heading"><span aria-hidden="true">☷</span><span data-i18n="history">可稽核事件紀錄</span></span><span class="history-counter" id="events-count">0</span></summary>
+          <div id="events" class="events"><p class="helper">—</p></div>
+        </details>
+      </div>
+
+      <aside class="side-pane" aria-label="Cart and checkout">
+        <section class="section-card cart-card" aria-labelledby="cart-title">
+          <div class="section-title"><div><p class="overline" data-i18n="cartOverline">03 / HUMAN CONTROL</p><h2 id="cart-title" data-i18n="cart">我的購物車</h2></div><span id="cart-count" class="count-pill">0</span></div>
+          <div id="cart-items" class="cart-items"><p class="helper">—</p></div>
+          <div class="money-row"><span data-i18n="total">合計</span><strong id="cart-total" class="grand-total">$0.00</strong></div>
+          <div class="budget-head"><label for="budget-input" data-i18n="budget">預算上限（美元）</label><span class="helper" id="budget-state"></span></div>
+          <div class="budget-edit"><span>$</span><input id="budget-input" type="number" inputmode="decimal" min="0.01" max="10000" step="0.01" placeholder="—" aria-label="Budget USD"><button id="save-budget" type="button" class="btn btn-soft" data-action="budget" data-i18n="save">設定</button><button id="clear-budget" type="button" class="btn btn-soft btn-tiny" data-action="budget-clear" aria-label="Clear budget">×</button></div>
+          <div class="bar" aria-hidden="true"><span class="bar-fill" id="budget-bar"></span></div>
+          <p id="cart-hint" class="cart-hint"></p>
+        </section>
+
+        <section class="section-card pay-card" aria-labelledby="pay-title">
+          <div class="section-title"><div><p class="overline">04 / PAYPAL SANDBOX</p><h2 id="pay-title" data-i18n="payment">付款確認</h2></div><span class="pay-lock" aria-hidden="true">♙</span></div>
+          <div id="checkout-body"><p class="helper" data-i18n="noCart">請先挑選商品。</p></div>
+        </section>
+      </aside>
+    </main>
+
+    <footer class="prompt-panel">
+      <div class="prompt-inner">
+        <div class="prompt-header"><label for="message" data-i18n="askAi">告訴 AI 你想買什麼</label><span id="prompt-status" class="prompt-status" aria-live="polite"></span></div>
+        <form id="say-form" class="prompt-form" autocomplete="off">
+          <button type="button" class="microphone" id="microphone" aria-label="Voice input" title="Voice input">♩</button>
+          <input id="message" name="message" enterkeyhint="send" maxlength="350" required placeholder="例如：幫我加兩杯拿鐵，不超過 $15">
+          <button class="send-btn" type="submit" id="send" aria-label="Send request">➤</button>
+        </form>
+        <div class="suggestions" id="suggestions"><button type="button" data-example="幫我加兩杯拿鐵">兩杯拿鐵</button><button type="button" data-example="我想花不到15美元買早餐">$15 早餐</button></div>
+      </div>
+    </footer>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
