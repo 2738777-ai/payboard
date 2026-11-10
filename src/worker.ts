@@ -85,10 +85,12 @@ export class Room extends DurableObject<Env> {
             return json({ error: "RATE_LIMIT", message: "這一小時問 AI 的次數用完了，晚點再試。" }, 429);
           const global = this.env.LIMIT.get(this.env.LIMIT.idFromName("global"));
           const useAi = await global.take(Number(this.env.AI_GLOBAL_PER_DAY ?? 1000));
+          const aiStartedAt = Date.now();
           const r = await aiPropose(text, b.cart, b.budgetCents, useAi ? this.env : {});
+          const aiLatencyMs = Date.now() - aiStartedAt;
           if (r.budgetCents !== null && r.budgetCents !== b.budgetCents && (b.phase === "購物車" || b.phase === "待批准提案")) b = step(b, { t: "SET_BUDGET", cents: r.budgetCents }, "human");
           b = step(b, { t: "AI_PROPOSE", cart: r.cart, note: r.note, id: `p-${crypto.randomUUID().slice(0, 8)}` }, "ai");
-          return json({ ...this.view(await this.save(b)), aiSource: r.source, ...(r.diagnostic ? { aiDiagnostic: r.diagnostic } : {}) });
+          return json({ ...this.view(await this.save(b)), aiSource: r.source, aiLatencyMs, ...(r.diagnostic ? { aiDiagnostic: r.diagnostic } : {}) });
         }
         case "POST /api/proposal/accept":
           return json(this.view(await this.save(step(b, { t: "ACCEPT_PROPOSAL" }, "human"))));

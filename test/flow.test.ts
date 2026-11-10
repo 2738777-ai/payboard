@@ -19,7 +19,7 @@ const mock = async (p: string, body?: unknown) => (await fetch(M + p, { method: 
 
 async function main() {
   const srv = await startMock(MOCK);
-  const w = spawn("npx", ["wrangler", "dev", "--port", String(PORT), "--ip", "127.0.0.1",
+  const w = spawn("npx", ["wrangler", "dev", "--config", "wrangler.test.toml", "--port", String(PORT), "--ip", "127.0.0.1",
     "--var", `PAYPAL_BASE:${M}`, "--var", "PAYPAL_CLIENT_ID:test-client", "--var", "PAYPAL_CLIENT_SECRET:test-secret",
     "--var", `GEMINI_BASE:${M}`, "--var", "GEMINI_API_KEY:test-key", "--var", "AI_PER_VISITOR_PER_HOUR:6"], { detached: true, stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, WRANGLER_SEND_METRICS: "false" } });
   let log = ""; w.stdout.on("data", (d) => (log += d)); w.stderr.on("data", (d) => (log += d));

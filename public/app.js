@@ -66,7 +66,7 @@
     }
   };
   let lang = (navigator.language || 'zh').toLowerCase().startsWith('zh') ? 'zh' : 'en';
-  let config = null, board = null, busy = false, latestSource = null, latestAiDiagnostic = null;
+  let config = null, board = null, busy = false, latestSource = null, latestAiDiagnostic = null, latestAiLatencyMs = null;
   let sdkPromise = null, payRenderGeneration = 0, toastTimer = null, recording = null;
   const t = key => translations[lang][key] ?? key;
   const catalog = () => (config?.catalog ?? []);
@@ -154,6 +154,7 @@
     section.hidden=!p;if(!p)return;
     setText('proposal-note',p.note||'—');
     setText('proposal-source',latestSource==='workers-ai'?'Workers AI · Gemma 4':latestSource==='gemini'?'Gemini':latestSource==='local'?t('local')+(latestAiDiagnostic?' · '+latestAiDiagnostic:''):t('unknownSource'));
+    if (Number.isFinite(latestAiLatencyMs)) $('proposal-source').textContent += ' · ' + (latestAiLatencyMs/1000).toFixed(1) + 's';
     const before=board.total,after=board.proposalTotal??cartTotal(p.cart);
     const skus=new Set([...Object.keys(board.cart||{}),...Object.keys(p.cart||{})]);
     const diffs=[...skus].filter(sku=>(p.cart[sku]||0)!==(board.cart[sku]||0)).map(sku=>`${escapeHtml(productName(sku))}: ${board.cart[sku]||0} → ${p.cart[sku]||0}`);
@@ -241,7 +242,7 @@
     setBusy(true,t('aiWorking'));
     try {
       const result=await api('/api/say','POST',{text:input},90000);
-      board=result;latestSource=result.aiSource||null;latestAiDiagnostic=result.aiDiagnostic||null;
+      board=result;latestSource=result.aiSource||null;latestAiDiagnostic=result.aiDiagnostic||null;latestAiLatencyMs=typeof result.aiLatencyMs==='number'?result.aiLatencyMs:null;
       $('message').value='';render();notice(t('proposed'));
       $('proposal-section').scrollIntoView({block:'nearest',behavior:'smooth'});
     } catch(err) {
