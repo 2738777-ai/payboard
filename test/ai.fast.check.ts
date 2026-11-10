@@ -25,7 +25,6 @@ async function main() {
   assert.equal(r.source, "workers-ai");
   assert.deepEqual(r.cart, { americano: 1, bagel: 1 });
   assert.equal(r.budgetCents, 700);
-  assert.deepEqual({}, {}, "the AI path returns a proposal, not a mutation");
   const failed = await aiPropose("兩杯拿鐵", {}, null,
     { AI: { run: async () => { throw new Error("model unavailable"); } } });
   assert.equal(failed.source, "local");
