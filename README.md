@@ -2,7 +2,7 @@
 
 **A real AI can propose a shopping cart. Only a human can authorize checkout. A deterministic server-side payment law prevents unauthorized or over-budget PayPal captures.**
 
-[Try the live Sandbox demo](https://payboard.2738777.workers.dev/) · [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/)
+[Try the live Sandbox demo](https://payboard.2738777.workers.dev/) · [Watch the 75-second demo](https://youtube.com/shorts/Wc89S-c935A) · [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/)
 
 > **Sandbox only.** PayBoard uses test money and PayPal Sandbox accounts. It is **not** a production payment service. Never enter live card credentials or real PayPal production secrets.
 
