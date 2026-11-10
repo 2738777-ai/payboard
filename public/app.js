@@ -240,7 +240,7 @@
     const input=String(text||'').trim();if(!input||busy||!isEditable())return;
     setBusy(true,t('aiWorking'));
     try {
-      const result=await api('/api/say','POST',{text:input},30000);
+      const result=await api('/api/say','POST',{text:input},90000);
       board=result;latestSource=result.aiSource||null;latestAiDiagnostic=result.aiDiagnostic||null;
       $('message').value='';render();notice(t('proposed'));
       $('proposal-section').scrollIntoView({block:'nearest',behavior:'smooth'});
