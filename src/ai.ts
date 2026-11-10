@@ -65,7 +65,7 @@ export async function aiPropose(
     `Shopper said: ${JSON.stringify(text.slice(0, 500))}`,
   ].join("\n");
   const base = env.GEMINI_BASE ?? "https://generativelanguage.googleapis.com";
-  const model = env.GEMINI_MODEL ?? "gemini-2.5-flash-lite";
+  const model = env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
   try {
     const r = await fetchFn(`${base}/v1beta/models/${model}:generateContent`, {
       method: "POST",
