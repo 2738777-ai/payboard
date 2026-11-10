@@ -1,7 +1,7 @@
 /** 站內 AI：讀價目表、目前購物車、預算 → 回「整個新購物車」的提案。AI 永遠只能提案。 */
 import { CATALOG, SKUS, cleanCart, totalCents, type Cart, type Sku } from "./law";
 
-export type AiResult = { cart: Cart; note: string; budgetCents: number | null; source: "gemini" | "local"; diagnostic?: string };
+export type AiResult = { cart: Cart; note: string; budgetCents: number | null; source: "workers-ai" | "gemini" | "local"; diagnostic?: string };
 
 const ZH_NUM: Record<string, number> = { 一: 1, 兩: 2, 二: 2, 三: 3, 四: 4, 五: 5, 六: 6, 七: 7, 八: 8, 九: 9, 十: 10 };
 const ALIASES: Record<Sku, RegExp> = {
@@ -45,14 +45,21 @@ const SCHEMA = {
   required: ["items", "note"],
 };
 
+export type AiBinding = {
+  run(model: "@cf/meta/llama-3.1-8b-instruct", input: {
+    messages: { role: "user"; content: string }[];
+    response_format: { type: "json_object" };
+  }): Promise<unknown>;
+};
+
 export async function aiPropose(
   text: string,
   cart: Cart,
   budgetCents: number | null,
-  env: { GEMINI_API_KEY?: string; GEMINI_BASE?: string; GEMINI_MODEL?: string },
+  env: { AI?: AiBinding; GEMINI_API_KEY?: string; GEMINI_BASE?: string; GEMINI_MODEL?: string },
   fetchFn: typeof fetch = fetch,
 ): Promise<AiResult> {
-  if (!env.GEMINI_API_KEY) return localParse(text, cart);
+  if (!env.AI && !env.GEMINI_API_KEY) return localParse(text, cart);
   const menu = SKUS.map((s) => `${s}: ${CATALOG[s].name}/${CATALOG[s].zh} $${(CATALOG[s].cents / 100).toFixed(2)}`).join("\n");
   const prompt = [
     "You help a shopper edit a cart. Return the FULL new cart (not a diff).",
@@ -65,43 +72,53 @@ export async function aiPropose(
     `Shopper said: ${JSON.stringify(text.slice(0, 500))}`,
   ].join("\n");
   const base = env.GEMINI_BASE ?? "https://generativelanguage.googleapis.com";
-  const model = env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
+  const workersModel = "@cf/meta/llama-3.1-8b-instruct";
+  const model = env.AI ? workersModel : (env.GEMINI_MODEL ?? "gemini-3.5-flash-lite");
   try {
-    const r = await fetchFn(`${base}/v1beta/models/${model}:generateContent`, {
-      method: "POST",
-      headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0.2 },
-      }),
-    });
-    if (!r.ok) {
-      // Expose only a coarse HTTP/status code: never disclose Google's raw error or credentials.
-      const fail = (await r.json().catch(() => null)) as { error?: { status?: unknown } } | null;
-      const kind = fail?.error?.status;
-      const safeKind = typeof kind === "string" && /^[A-Z_]{3,40}$/.test(kind) ? `_${kind}` : "";
-      throw new Error(`HTTP_${r.status}${safeKind}`);
+    let payload: unknown;
+    if (env.AI) {
+      const result = await env.AI.run(workersModel, {
+        messages: [{ role: "user", content: prompt + "\nReturn JSON with items (array of {sku, qty}), budget_usd (number or null), and note (string)." }],
+        response_format: { type: "json_object" },
+      }) as { response?: unknown };
+      payload = result?.response;
+    } else {
+      const r = await fetchFn(`${base}/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": env.GEMINI_API_KEY! },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: { responseMimeType: "application/json", responseSchema: SCHEMA, temperature: 0.2 },
+        }),
+      });
+      if (!r.ok) {
+        // Expose only a coarse HTTP/status code: never disclose Google's raw error or credentials.
+        const fail = (await r.json().catch(() => null)) as { error?: { status?: unknown } } | null;
+        const kind = fail?.error?.status;
+        const safeKind = typeof kind === "string" && /^[A-Z_]{3,40}$/.test(kind) ? `_${kind}` : "";
+        throw new Error(`HTTP_${r.status}${safeKind}`);
+      }
+      const j = (await r.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
+      payload = j.candidates?.[0]?.content?.parts?.[0]?.text;
     }
-    const j = (await r.json()) as { candidates?: { content?: { parts?: { text?: string }[] } }[] };
-    const payload = j.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!payload) throw new Error("EMPTY_RESULT");
     let raw: { items?: { sku: string; qty: number }[]; note?: string; budget_usd?: number | null };
-    try { raw = JSON.parse(payload); }
+    try { raw = typeof payload === "string" ? JSON.parse(payload) : payload as typeof raw; }
     catch { throw new Error("INVALID_JSON"); }
-    if (!Array.isArray(raw.items)) throw new Error("INVALID_SCHEMA");
+    if (!Array.isArray(raw?.items) || raw.items.some(it => !it || typeof it.sku !== "string" || !Number.isInteger(it.qty))) throw new Error("INVALID_SCHEMA");
     const next: Record<string, number> = {};
     for (const it of raw.items ?? []) next[it.sku] = it.qty;
     return {
       cart: cleanCart(next), // 價目表沒有的、負數、超量，一律在這裡擋掉
       note: String(raw.note ?? "").slice(0, 280) || "已提出購物車提案",
       budgetCents: typeof raw.budget_usd === "number" && raw.budget_usd > 0 ? Math.round(raw.budget_usd * 100) : budgetCents,
-      source: "gemini",
+      source: env.AI ? "workers-ai" : "gemini",
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
     const diagnostic = /^(HTTP_\d{3}(?:_[A-Z_]{3,40})?|EMPTY_RESULT|INVALID_JSON|INVALID_SCHEMA)$/.test(msg) ? msg : "NETWORK_ERROR";
     // No shopper text, model output, credentials or raw upstream response in logs.
-    console.warn("PAYBOARD_GEMINI_FALLBACK", { model, diagnostic });
+    console.warn(env.AI ? "PAYBOARD_WORKERS_AI_FALLBACK" : "PAYBOARD_GEMINI_FALLBACK", { model, diagnostic });
     const fb = localParse(text, cart);
     return { ...fb, diagnostic, note: fb.note + "（AI 暫時沒回應，改用本機規則）" };
   }
