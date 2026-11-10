@@ -1,6 +1,8 @@
 name: PayBoard checks
 
 on:
+  push:
+    branches: [main, chatgpt/gemma4-fast-inference]
   pull_request:
     branches: [main]
   workflow_dispatch:
