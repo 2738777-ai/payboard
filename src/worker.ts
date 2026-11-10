@@ -12,6 +12,7 @@ export interface Env {
   LIMIT: DurableObjectNamespace<Limiter>;
   ASSETS: Fetcher;
   AI?: AiBinding;
+  WORKER_VERSION?: { id: string };
   GEMINI_API_KEY?: string;
   GEMINI_BASE?: string;
   GEMINI_MODEL?: string;
@@ -29,7 +30,7 @@ export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const url = new URL(req.url);
     if (url.pathname === "/api/config")
-      return json({ paypalClientId: env.PAYPAL_CLIENT_ID ?? null, ai: env.AI ? "workers-ai" : env.GEMINI_API_KEY ? "gemini" : "local", catalog: SKUS.map((s) => ({ sku: s, ...CATALOG[s] })) });
+      return json({ version: env.WORKER_VERSION?.id ?? null, paypalClientId: env.PAYPAL_CLIENT_ID ?? null, ai: env.AI ? "workers-ai" : env.GEMINI_API_KEY ? "gemini" : "local", catalog: SKUS.map((s) => ({ sku: s, ...CATALOG[s] })) });
     if (!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
     // 訪客編號：沒有就發一個（每位訪客自己的沙盒）
     const m = (req.headers.get("cookie") ?? "").match(/(?:^|;\s*)pb_vid=([a-f0-9-]{36})/);

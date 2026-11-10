@@ -153,7 +153,7 @@
     const section=$('proposal-section');const p=board.proposal;
     section.hidden=!p;if(!p)return;
     setText('proposal-note',p.note||'—');
-    setText('proposal-source',latestSource==='workers-ai'?'Workers AI · Llama 3.1 8B':latestSource==='gemini'?'Gemini':latestSource==='local'?t('local')+(latestAiDiagnostic?' · '+latestAiDiagnostic:''):t('unknownSource'));
+    setText('proposal-source',latestSource==='workers-ai'?'Workers AI · Gemma 4':latestSource==='gemini'?'Gemini':latestSource==='local'?t('local')+(latestAiDiagnostic?' · '+latestAiDiagnostic:''):t('unknownSource'));
     const before=board.total,after=board.proposalTotal??cartTotal(p.cart);
     const skus=new Set([...Object.keys(board.cart||{}),...Object.keys(p.cart||{})]);
     const diffs=[...skus].filter(sku=>(p.cart[sku]||0)!==(board.cart[sku]||0)).map(sku=>`${escapeHtml(productName(sku))}: ${board.cart[sku]||0} → ${p.cart[sku]||0}`);
@@ -203,7 +203,7 @@
     setText('board-rev',`v${board.version}`);
     setText('service-label',window.__PAYBOARD_PREVIEW__ ? (lang==='zh'?'離線預覽':'Offline preview') : t('connected'));
     $('service-status').classList.remove('is-error');
-    setText('ai-status',config.ai==='workers-ai'?'Workers AI · Llama 3.1 8B':config.ai==='gemini'?t('gemini'):t('aiNotSet'));
+    setText('ai-status',config.ai==='workers-ai'?'Workers AI · Gemma 4':config.ai==='gemini'?t('gemini'):t('aiNotSet'));
     renderProducts();renderCart();renderProposal();renderHistory();renderCheckout();phaseStep();
     $('send').disabled=busy||!isEditable();$('message').disabled=busy||!isEditable();$('microphone').disabled=busy||!isEditable();
     $('prompt-status').textContent=board.phase==='購物車'||board.phase==='待批准提案'?'':t('actionsLimited');

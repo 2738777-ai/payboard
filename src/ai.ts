@@ -46,7 +46,8 @@ const SCHEMA = {
 };
 
 export type AiBinding = {
-  run(model: "@cf/meta/llama-3.1-8b-instruct", input: {
+  run(model: "@cf/google/gemma-4-26b-a4b-it", input: {
+    response_format: { type: "json_object" };
     messages: { role: "user"; content: string }[];
   }): Promise<unknown>;
 };
@@ -71,15 +72,16 @@ export async function aiPropose(
     `Shopper said: ${JSON.stringify(text.slice(0, 500))}`,
   ].join("\n");
   const base = env.GEMINI_BASE ?? "https://generativelanguage.googleapis.com";
-  const workersModel = "@cf/meta/llama-3.1-8b-instruct";
+  const workersModel = "@cf/google/gemma-4-26b-a4b-it";
   const model = env.AI ? workersModel : (env.GEMINI_MODEL ?? "gemini-3.5-flash-lite");
   try {
     let payload: unknown;
     if (env.AI) {
       const result = await env.AI.run(workersModel, {
+        response_format: { type: "json_object" },
         messages: [{ role: "user", content: prompt + "\nReturn JSON with items (array of {sku, qty}), budget_usd (number or null), and note (string)." }],
-      }) as { response?: unknown };
-      payload = result?.response;
+      }) as { response?: unknown; choices?: { message?: { content?: string } }[] };
+      payload = result?.choices?.[0]?.message?.content ?? result?.response;
     } else {
       const r = await fetchFn(`${base}/v1beta/models/${model}:generateContent`, {
         method: "POST",
