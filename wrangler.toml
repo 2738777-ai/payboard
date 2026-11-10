@@ -19,6 +19,9 @@ class_name = "Limiter"
 tag = "v1"
 new_sqlite_classes = ["Room", "Limiter"]
 
+[ai]
+binding = "AI"
+
 [vars]
 AI_PER_VISITOR_PER_HOUR = "20"
 AI_GLOBAL_PER_DAY = "1000"
