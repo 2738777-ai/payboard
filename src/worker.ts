@@ -86,7 +86,7 @@ export class Room extends DurableObject<Env> {
           const r = await aiPropose(text, b.cart, b.budgetCents, useAi ? this.env : {});
           if (r.budgetCents !== null && r.budgetCents !== b.budgetCents && (b.phase === "購物車" || b.phase === "待批准提案")) b = step(b, { t: "SET_BUDGET", cents: r.budgetCents }, "human");
           b = step(b, { t: "AI_PROPOSE", cart: r.cart, note: r.note, id: `p-${crypto.randomUUID().slice(0, 8)}` }, "ai");
-          return json({ ...this.view(await this.save(b)), aiSource: r.source });
+          return json({ ...this.view(await this.save(b)), aiSource: r.source, ...(r.diagnostic ? { aiDiagnostic: r.diagnostic } : {}) });
         }
         case "POST /api/proposal/accept":
           return json(this.view(await this.save(step(b, { t: "ACCEPT_PROPOSAL" }, "human"))));

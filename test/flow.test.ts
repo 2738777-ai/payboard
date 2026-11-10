@@ -88,7 +88,7 @@ async function main() {
     await mock("/mock/gemini-fail", { fail: true });
     const c = new Visitor();
     r = await c.call("POST", "/api/say", { text: "三個可頌" });
-    assert.equal(r.j.aiSource, "local"); assert.deepEqual(r.j.proposal.cart, { croissant: 3 }); assert.match(r.j.proposal.note, /本機規則/);
+    assert.equal(r.j.aiSource, "local"); assert.equal(r.j.aiDiagnostic, "HTTP_503"); assert.deepEqual(r.j.proposal.cart, { croissant: 3 }); assert.match(r.j.proposal.note, /本機規則/);
     await mock("/mock/gemini-fail", { fail: false });
     ok("Gemini 掛掉時改用本機規則，並明白寫出來");
 
