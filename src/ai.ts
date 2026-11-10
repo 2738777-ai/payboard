@@ -48,7 +48,6 @@ const SCHEMA = {
 export type AiBinding = {
   run(model: "@cf/meta/llama-3.1-8b-instruct", input: {
     messages: { role: "user"; content: string }[];
-    response_format: { type: "json_object" };
   }): Promise<unknown>;
 };
 
@@ -79,7 +78,6 @@ export async function aiPropose(
     if (env.AI) {
       const result = await env.AI.run(workersModel, {
         messages: [{ role: "user", content: prompt + "\nReturn JSON with items (array of {sku, qty}), budget_usd (number or null), and note (string)." }],
-        response_format: { type: "json_object" },
       }) as { response?: unknown };
       payload = result?.response;
     } else {
@@ -118,7 +116,13 @@ export async function aiPropose(
     const msg = err instanceof Error ? err.message : "";
     const diagnostic = /^(HTTP_\d{3}(?:_[A-Z_]{3,40})?|EMPTY_RESULT|INVALID_JSON|INVALID_SCHEMA)$/.test(msg) ? msg : "NETWORK_ERROR";
     // No shopper text, model output, credentials or raw upstream response in logs.
-    console.warn(env.AI ? "PAYBOARD_WORKERS_AI_FALLBACK" : "PAYBOARD_GEMINI_FALLBACK", { model, diagnostic });
+    const providerError = err as { code?: unknown; status?: unknown } | null;
+    console.warn(env.AI ? "PAYBOARD_WORKERS_AI_FALLBACK" : "PAYBOARD_GEMINI_FALLBACK", {
+      model,
+      diagnostic,
+      ...(env.AI && typeof providerError?.code === "number" ? { code: providerError.code } : {}),
+      ...(env.AI && typeof providerError?.status === "number" ? { status: providerError.status } : {}),
+    });
     const fb = localParse(text, cart);
     return { ...fb, diagnostic, note: fb.note + "（AI 暫時沒回應，改用本機規則）" };
   }
