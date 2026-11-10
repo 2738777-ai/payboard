@@ -8,7 +8,7 @@
 
 **Source:** https://github.com/2738777-ai/payboard (must be made Public before submitting)
 
-**Demo video:** [INSERT PUBLIC YOUTUBE URL AFTER UPLOAD]
+**Demo video:** https://youtube.com/shorts/Wc89S-c935A
 
 ## Inspiration
 
