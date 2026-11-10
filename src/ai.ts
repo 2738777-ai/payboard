@@ -48,6 +48,9 @@ const SCHEMA = {
 export type AiBinding = {
   run(model: "@cf/google/gemma-4-26b-a4b-it", input: {
     response_format: { type: "json_object" };
+    chat_template_kwargs: { enable_thinking: false };
+    max_completion_tokens: number;
+    temperature: number;
     messages: { role: "user"; content: string }[];
   }): Promise<unknown>;
 };
@@ -79,7 +82,11 @@ export async function aiPropose(
     if (env.AI) {
       const result = await env.AI.run(workersModel, {
         response_format: { type: "json_object" },
-        messages: [{ role: "user", content: prompt + "\nReturn JSON with items (array of {sku, qty}), budget_usd (number or null), and note (string)." }],
+        // Gemma 4 on Workers AI enables slow extended reasoning by default. Shopping cart JSON needs no chain of thought.
+        chat_template_kwargs: { enable_thinking: false },
+        max_completion_tokens: 256,
+        temperature: 0.2,
+        messages: [{ role: "user", content: prompt + "\nReturn compact JSON with items (array of {sku, qty}), budget_usd (number or null), and note (one short sentence)." }],
       }) as { response?: unknown; choices?: { message?: { content?: string } }[] };
       payload = result?.choices?.[0]?.message?.content ?? result?.response;
     } else {
