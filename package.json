@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "check:law": "tsx test/law.check.ts",
-    "test": "tsx test/law.check.ts && tsx test/flow.test.ts",
+    "test": "tsx test/ai.fast.check.ts && tsx test/law.check.ts && tsx test/flow.test.ts",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy"
   },
